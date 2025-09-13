@@ -14,6 +14,9 @@ export default defineConfig({
     target: "node22",
     ssr: true,
     rollupOptions: {
+      // --- MODIFICATION ---
+      // We are removing "express" and "cors" from this list
+      // so they get bundled into the final server file.
       external: [
         // Node.js built-ins
         "fs",
@@ -29,9 +32,6 @@ export default defineConfig({
         "buffer",
         "querystring",
         "child_process",
-        // External dependencies that should not be bundled
-        "express",
-        "cors",
       ],
       output: {
         format: "es",
