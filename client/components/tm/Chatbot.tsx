@@ -36,14 +36,16 @@ export function Chatbot() {
       const response = await fetch('/api/chatbot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, userId: 'demo-user-123' }), // Pass a user identifier
+        body: JSON.stringify({ message: t, userId: 'demo-user-123' }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Chatbot service is unavailable.');
+        // Use the error message from the backend if it exists
+        throw new Error(data.error || 'Chatbot service is unavailable.');
       }
 
-      const data = await response.json();
       setMsgs((m) => [...m, { role: "bot", text: data.reply }]);
 
     } catch (error) {

@@ -1,31 +1,27 @@
 import { RequestHandler } from "express";
-import fetch from "node-fetch";
+import { db } from "../services/dbService"; // CORRECTED PATH
+import { llmService } from "../services/llmService"; // CORRECTED PATH
 
-// This workflow handles dynamic chatbot responses.
 export const handleChatbotQuery: RequestHandler = async (req, res) => {
-  const { message, userId } = req.body; // Assuming you can identify the user
+  const { message, userId } = req.body;
 
-  // --- WORKFLOW PLACEHOLDER ---
-  // Replace with your Buildship URL for the advanced chatbot logic.
-  const buildshipApiUrl = "https://<YOUR_WORKFLOW_URL>.buildship.run/advanced_chatbot";
+  const context = `
+    You are a helpful AI assistant for an insurance agent using the "Turtlemint B2B" dashboard.
+    The agent manages customer policies (Health, Life, Motor, Travel).
+    Key features of the app are: A dashboard to view all policies, "AI Scan" to autofill details, a "Policy Explainer", "Cash Deposit" logging, and an "Engagement" tool.
+    The current user is an agent. A sample customer policy is provided for context. Keep answers concise.
+  `;
+  const policy = await db.findPolicyById("PL-1002");
+  const personalizedContext = `
+    Context about one of the agent's customers:
+    - Customer Name: ${policy?.customer}, Policy ID: ${policy?.id}, Status: ${policy?.status}
+  `;
+  const prompt = `${context}\n${personalizedContext}\n\nAgent's Question: "${message}"`;
 
   try {
-    const response = await fetch(buildshipApiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, userId }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Chatbot workflow failed in Buildship.");
-    }
-
-    const data = await response.json();
-    // Assuming the workflow returns a JSON object like { reply: "..." }
-    res.status(200).json(data);
-
+    const reply = await llmService.getCompletion(prompt);
+    res.status(200).json({ reply });
   } catch (error) {
-    console.error("Chatbot error:", error);
-    res.status(500).json({ error: "Chatbot is currently unavailable." });
+    res.status(500).json({ error: "The AI Chatbot service failed to respond. Please check the server logs and API keys." });
   }
 };

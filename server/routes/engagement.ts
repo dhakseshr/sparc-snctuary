@@ -1,30 +1,48 @@
 import { RequestHandler } from "express";
-import fetch from "node-fetch";
+import { db } from "../services/dbService";
+import { whatsappService } from "../services/whatsappService"; // CORRECTED PATH
+import { llmService } from "../services/llmService";
 
-// This workflow handles sending bulk customer engagement messages.
 export const handleEngagementBlast: RequestHandler = async (req, res) => {
-  const { customerSegment, message } = req.body;
+    const { customerSegment, message } = req.body;
+    try {
+      const customers = await db.findCustomersBySegment(customerSegment);
+      if (!customers.length) {
+        return res.status(200).json({ message: "No customers found in this segment.", sentCount: 0 });
+      }
+      let sentCount = 0;
+      for (const customer of customers) {
+        if (customer.phone) {
+          await whatsappService.sendMessage(customer.phone, message);
+          sentCount++;
+        }
+      }
+      res.status(200).json({ message: `Engagement message sent to ${sentCount} customers.`, sentCount });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send engagement messages." });
+    }
+};
 
-  // --- WORKFLOW PLACEHOLDER ---
-  // Replace with your Buildship URL for customer retention/engagement.
-  const buildshipApiUrl = "https://<YOUR_WORKFLOW_URL>.buildship.run/customer_engagement_automation";
+export const handleGetSuggestion: RequestHandler = async (req, res) => {
+  const { text } = req.body;
+
+  if (!text || text.trim().length < 15) {
+    return res.status(200).json({ suggestion: "" });
+  }
+
+  const prompt = `
+    You are a writing assistant for an insurance agent.
+    Rephrase the following message to be more professional, engaging, and clear for a customer.
+    Keep it concise and friendly.
+    Do not add any preamble like "Here's a revised version:". Just provide the rephrased text directly.
+    
+    Original message: "${text}"
+  `;
 
   try {
-    const response = await fetch(buildshipApiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ customerSegment, message }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to send engagement blast via Buildship.");
-    }
-
-    const data = await response.json();
-    res.status(200).json({ message: `Engagement message sent to ${data.sentCount} customers.` });
-
+    const suggestion = await llmService.getCompletion(prompt);
+    res.status(200).json({ suggestion });
   } catch (error) {
-    console.error("Engagement error:", error);
-    res.status(500).json({ error: "Failed to send engagement message." });
+    res.status(500).json({ error: "Failed to get suggestion." });
   }
 };

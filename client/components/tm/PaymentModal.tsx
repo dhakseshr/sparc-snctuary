@@ -13,9 +13,10 @@ export interface PaymentModalProps {
   policyId: string;
   customer: string;
   amount: number;
+  onPaymentSuccess: (updatedPolicy: any) => void; // Callback to update the main page state
 }
 
-export function PaymentModal({ open, onOpenChange, policyId, customer, amount }: PaymentModalProps) {
+export function PaymentModal({ open, onOpenChange, policyId, customer, amount, onPaymentSuccess }: PaymentModalProps) {
   const [method, setMethod] = useState("upi");
   const [processing, setProcessing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -33,27 +34,31 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount }:
   async function handlePay(selectedMethod: string) {
     setProcessing(true);
     try {
-      // Call your backend to initiate the payment workflow
-      const response = await fetch('/api/payments/create', {
+      // Call your self-hosted backend to simulate the payment confirmation
+      const response = await fetch('/api/payments/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ policyId, amount, customer, method: selectedMethod }),
+        body: JSON.stringify({ policyId }),
       });
 
       if (!response.ok) {
-        throw new Error('Payment initiation failed.');
+        throw new Error('Payment confirmation failed on the server.');
       }
       
-      // The backend has now started the workflow.
-      // For this demo, we'll assume an immediate success and generate a receipt.
-      // In a real app, you would listen for a webhook or poll for status.
-      const txnId = `TXN-${selectedMethod.toUpperCase()}-${Date.now()}`;
-      downloadReceipt({ policyId, customer, amount, method: selectedMethod.toUpperCase(), txnId, timestamp: new Date().toLocaleString() });
-      toast.success("Payment successful", { description: `Txn ${txnId}` });
-      onOpenChange(false);
-      
+      const result = await response.json();
+      if (result.status === 'success') {
+        const txnId = `MOCK-TXN-${Date.now()}`;
+        downloadReceipt({ policyId, customer, amount, method: selectedMethod.toUpperCase(), txnId, timestamp: new Date().toLocaleString() });
+        toast.success("Payment Confirmed!", { description: `Policy ${policyId} is now Active.` });
+        
+        // Use the callback to notify the main page to update its state
+        onPaymentSuccess(result.updatedPolicy);
+        onOpenChange(false); // Close the modal
+      } else {
+        throw new Error(result.message || 'Payment processing failed.');
+      }
     } catch (e) {
-      toast.error("Payment failed", { description: (e as Error).message });
+      toast.error("Payment Failed", { description: (e as Error).message });
     } finally {
       setProcessing(false);
     }
@@ -73,13 +78,13 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount }:
           </TabsList>
           <TabsContent value="upi" className="space-y-4">
             <div className="flex gap-6">
-              <div className="rounded-lg border p-4">
-                <canvas ref={canvasRef} className="bg-white" />
+              <div className="rounded-lg border bg-white p-4">
+                <canvas ref={canvasRef} />
               </div>
               <div className="flex-1 space-y-3">
                 <label className="text-sm font-medium">VPA (UPI ID)</label>
                 <Input value={vpa} onChange={(e) => setVpa(e.target.value)} placeholder="name@bank" />
-                <p className="text-sm text-muted-foreground">Scan the QR or pay to this VPA. Auto-confirms on success.</p>
+                <p className="text-sm text-muted-foreground">Scan the QR or pay to this VPA. Our system will confirm upon success.</p>
                 <div className="pt-2">
                   <Button onClick={() => handlePay("upi")} disabled={processing}>
                     {processing ? "Processing..." : "Confirm Payment"}
@@ -90,33 +95,33 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount }:
           </TabsContent>
           <TabsContent value="card" className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="text-sm font-medium">Card Number</label>
-                  <Input placeholder="1234 5678 9012 3456" maxLength={19} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Expiry</label>
-                  <Input placeholder="MM/YY" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">CVV</label>
-                  <Input placeholder="***" type="password" />
-                </div>
-                <div className="col-span-2 pt-2">
-                  <Button onClick={() => handlePay("card")} disabled={processing}>
-                    {processing ? "Processing..." : "Pay Now"}
-                  </Button>
-                </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium">Card Number</label>
+                <Input placeholder="1234 5678 9012 3456" maxLength={19} />
               </div>
+              <div>
+                <label className="text-sm font-medium">Expiry</label>
+                <Input placeholder="MM/YY" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">CVV</label>
+                <Input placeholder="***" type="password" />
+              </div>
+              <div className="col-span-2 pt-2">
+                <Button onClick={() => handlePay("card")} disabled={processing}>
+                  {processing ? "Processing..." : "Pay Now"}
+                </Button>
+              </div>
+            </div>
           </TabsContent>
           <TabsContent value="netbanking" className="space-y-3">
-             <label className="text-sm font-medium">Select Bank</label>
-             <Input placeholder="e.g., HDFC, ICICI, SBI" />
-             <div className="pt-2">
-               <Button onClick={() => handlePay("netbanking")} disabled={processing}>
-                 {processing ? "Processing..." : "Proceed to Bank"}
-               </Button>
-             </div>
+            <label className="text-sm font-medium">Select Bank</label>
+            <Input placeholder="e.g., HDFC, ICICI, SBI" />
+            <div className="pt-2">
+              <Button onClick={() => handlePay("netbanking")} disabled={processing}>
+                {processing ? "Processing..." : "Proceed to Bank"}
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

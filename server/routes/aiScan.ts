@@ -5,49 +5,48 @@ import multer from "multer";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Middleware to handle the file upload from the frontend
+export const aiScanUpload = upload.single("document");
+
+// Handler that forwards the file to your Buildship workflow
 export const handleAiScan: RequestHandler = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded." });
   }
 
-  // IMPORTANT: Replace with your actual Buildship API endpoint URL
-  const buildshipApiUrl = "https://<YOUR_WORKFLOW_URL>.buildship.run/image-text-extraction-to-dynamic-database-4bafa2afc7a2";
+  const buildshipApiUrl = process.env.BUILTSHIP_AI_SCAN_URL;
+  if (!buildshipApiUrl) {
+    console.error("Buildship AI Scan URL is not set in .env");
+    return res.status(500).json({ error: "AI Scan service is not configured." });
+  }
 
   try {
+    // Create a new FormData object to send to Buildship
     const formData = new FormData();
     formData.append("uploadImages", req.file.buffer, {
       filename: req.file.originalname,
       contentType: req.file.mimetype,
     });
-    // You can make this dynamic if needed, e.g., from req.body
-    formData.append("databaseTableName", "insurancePolicies");
+    formData.append("databaseTableName", "insurancePolicies"); // Pass other inputs your workflow needs
 
+    // Call the Buildship workflow
     const response = await fetch(buildshipApiUrl, {
       method: "POST",
       body: formData,
-      // Pass headers if required by Buildship, but FormData usually sets its own
-      // headers: formData.getHeaders(),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Buildship API Error:", errorText);
-      throw new Error(`Buildship API failed with status: ${response.status}`);
+      throw new Error(`Buildship API failed: ${errorText}`);
     }
 
     const data = await response.json();
-
-    // Assuming the final step in your Buildship workflow is named 'analyze_content_structure'
-    // and returns the extracted data in its 'output' property.
-    // Adjust this path based on your actual Buildship workflow structure.
-    const extractedDetails = data.output; // Or data.steps.analyze_content_structure.output;
-
-    res.status(200).json(extractedDetails);
+    
+    // Assuming your workflow's final output is in a property named 'output'
+    res.status(200).json(data.output);
+    
   } catch (error) {
-    console.error("Error calling Buildship workflow:", error);
-    res.status(500).json({ error: "Failed to process document with AI." });
+    console.error("Error proxying to Buildship AI workflow:", error);
+    res.status(500).json({ error: (error as Error).message });
   }
 };
-
-// We need to export the upload middleware to use in the main server file
-export const aiScanUpload = upload.single("document");
