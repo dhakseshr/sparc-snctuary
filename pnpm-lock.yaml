@@ -33,8 +33,8 @@ importers:
         specifier: ^1.17.1
         version: 1.17.1
       pdf-parse:
-        specifier: ^1.1.1
-        version: 1.1.1
+        specifier: ^1.1.0
+        version: 1.1.0
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -2429,8 +2429,8 @@ packages:
   pdf-lib@1.17.1:
     resolution: {integrity: sha512-V/mpyJAoTsN4cnP31vc0wfNA1+p20evqqnap0KLoRUN0Yk/p3wN52DOEsL4oBFcLdb76hlpKPtzJIgo67j/XLw==}
 
-  pdf-parse@1.1.1:
-    resolution: {integrity: sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==}
+  pdf-parse@1.1.0:
+    resolution: {integrity: sha512-/Rmx5QYCpRqgSqFJLK5do/5n/hOEfe7ZVfamQdugXmGQ3sQ6sJzw/IabcjClvbb6+tA021j3FFDKvKlLebeJmA==}
     engines: {node: '>=6.8.1'}
 
   picocolors@1.1.1:
@@ -5265,7 +5265,7 @@ snapshots:
       pako: 1.0.11
       tslib: 1.14.1
 
-  pdf-parse@1.1.1:
+  pdf-parse@1.1.0:
     dependencies:
       debug: 3.2.7
       node-ensure: 0.0.0
