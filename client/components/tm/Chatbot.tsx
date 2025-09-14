@@ -3,57 +3,40 @@ import { MessageCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
 
 interface Msg { role: "user" | "bot"; text: string }
 
 const SUGGESTIONS = [
   "How to renew policy?",
-  "What is my policy status?",
+  "What documents are needed?",
   "How to download receipt?",
 ];
 
 export function Chatbot() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "bot", text: "Hi! How can I help you today?" },
+    { role: "bot", text: "Hi! I can help with FAQs." },
   ]);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, open]);
 
-  async function send(text?: string) {
+  function send(text?: string) {
     const t = (text ?? input).trim();
-    if (!t || loading) return;
-
+    if (!t) return;
     setInput("");
     setMsgs((m) => [...m, { role: "user", text: t }]);
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/chatbot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, userId: 'demo-user-123' }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Use the error message from the backend if it exists
-        throw new Error(data.error || 'Chatbot service is unavailable.');
-      }
-
-      setMsgs((m) => [...m, { role: "bot", text: data.reply }]);
-
-    } catch (error) {
-        toast.error("Chatbot Error", { description: (error as Error).message });
-        setMsgs((m) => [...m, { role: "bot", text: "Sorry, I'm having trouble connecting right now." }]);
-    } finally {
-        setLoading(false);
-    }
+    // Lightweight rule-based bot for demo
+    const reply =
+      t.toLowerCase().includes("renew") ?
+        "To renew, open the policy, click 'Make Payment', choose method and complete. Receipts are generated automatically." :
+      t.toLowerCase().includes("document") ?
+        "Common documents: Aadhaar/PAN, last policy copy, address proof. Upload via AI Scan to autofill." :
+      t.toLowerCase().includes("receipt") ?
+        "After a successful payment, a digital receipt is downloadable and sent via SMS/Email/WhatsApp." :
+        "I can help with renewals, payments, receipts, and documents.";
+    setTimeout(() => setMsgs((m) => [...m, { role: "bot", text: reply }]), 300);
   }
 
   if (!open)
@@ -92,13 +75,12 @@ export function Chatbot() {
                 </span>
               </div>
             ))}
-             {loading && <div className="text-left"><span className="inline-block rounded-2xl bg-secondary px-3 py-2 text-sm">...</span></div>}
             <div ref={endRef} />
           </div>
         </ScrollArea>
         <div className="mt-2 flex items-center gap-2">
-          <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type your question..." onKeyDown={(e) => e.key === 'Enter' && send()} disabled={loading} />
-          <Button onClick={() => send()} aria-label="Send" disabled={loading}>
+          <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type your question..." onKeyDown={(e) => e.key === 'Enter' && send()} voiceEnabled />
+          <Button onClick={() => send()} aria-label="Send">
             <Send className="h-4 w-4" />
           </Button>
         </div>

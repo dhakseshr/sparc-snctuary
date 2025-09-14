@@ -1,5 +1,5 @@
 import { RequestHandler } from "express";
-import { db } from "../services/dbService";
+import { db } from "../services/supabaseService";
 import { whatsappService } from "../services/whatsappService"; // CORRECTED PATH
 import { llmService } from "../services/llmService";
 
@@ -35,7 +35,7 @@ export const handleGetSuggestion: RequestHandler = async (req, res) => {
     Rephrase the following message to be more professional, engaging, and clear for a customer.
     Keep it concise and friendly.
     Do not add any preamble like "Here's a revised version:". Just provide the rephrased text directly.
-    
+
     Original message: "${text}"
   `;
 

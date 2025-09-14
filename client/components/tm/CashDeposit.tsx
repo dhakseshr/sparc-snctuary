@@ -87,7 +87,8 @@ export function CashDeposit({
           </div>
           <div>
             <label className="text-sm font-medium">Amount</label>
-            <Input value={selected ? `₹ ${selected.amount.toLocaleString()}` : ""} readOnly />
+            {/* FIX: Check if 'selected' exists before accessing 'amount' */}
+            <Input value={selected ? `₹ ${(selected.amount || 0).toLocaleString()}` : ""} readOnly />
           </div>
           <div className="flex items-end">
             <Button onClick={generate} disabled={!selected}>Generate QR</Button>

@@ -1,5 +1,5 @@
 import { RequestHandler } from "express";
-import { db } from "../services/dbService"; // CORRECTED PATH
+import { db } from "../services/supabaseService"; // CORRECTED PATH
 import { llmService } from "../services/llmService"; // CORRECTED PATH
 
 export const handleChatbotQuery: RequestHandler = async (req, res) => {

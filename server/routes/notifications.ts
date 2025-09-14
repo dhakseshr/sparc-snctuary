@@ -1,39 +1,44 @@
 import { RequestHandler } from "express";
-import fetch from "node-fetch";
+import { whatsappService } from "../services/whatsappService";
+import { db } from "../services/supabaseService";
 
-// This workflow handles sending WhatsApp reminders.
 export const handleSendReminder: RequestHandler = async (req, res) => {
-  // ... (this function remains unchanged)
+  const { policyId, phone, customer } = req.body;
+  if (!policyId || !phone || !customer) {
+      return res.status(400).json({ error: "Policy ID, Phone, and Customer Name are required." });
+  }
+  const message = `Dear ${customer}, this is a friendly reminder that your policy ${policyId} is due for renewal soon. Please make the payment to ensure continued coverage. Thank you, Turtlemint.`;
+
+  try {
+      const success = await whatsappService.sendMessage(phone, message);
+      if (success) {
+          res.status(200).json({ message: "Reminder sent successfully." });
+      } else {
+          throw new Error("WhatsApp service failed to send the message.");
+      }
+  } catch (error) {
+      res.status(500).json({ error: "Failed to send reminder." });
+  }
 };
 
-// --- NEW FUNCTION ---
-// This workflow handles sending a specific plan recommendation to a customer.
 export const handleSendRecommendation: RequestHandler = async (req, res) => {
   const { customerName, policyName, premium, coverage } = req.body;
 
-  // --- WORKFLOW PLACEHOLDER ---
-  // This can use the same notification workflow, just with a different message type.
-  const buildshipApiUrl = "https://<YOUR_WORKFLOW_URL>.buildship.run/send_whatsapp_notification";
-
   try {
-    const response = await fetch(buildshipApiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customerName,
-        messageType: "plan_recommendation",
-        details: `Hi ${customerName}, based on your needs, I recommend the ${policyName} plan with ₹${coverage.toLocaleString()} coverage for a premium of just ₹${premium.toLocaleString()}. Let me know if you're interested!`
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to send recommendation via Buildship.");
+    const customer = await db.findCustomerByName(customerName);
+    if (!customer || !customer.phone) {
+        return res.status(404).json({ error: "Customer phone number not found." });
     }
 
-    res.status(200).json({ message: "Recommendation sent successfully." });
-
+    const message = `Hi ${customerName}, based on your needs, I recommend the "${policyName}" plan. It offers coverage of ₹${coverage.toLocaleString()} for a premium of just ₹${premium.toLocaleString()}. Let me know if you're interested!`;
+    
+    const success = await whatsappService.sendMessage(customer.phone, message);
+    if(success) {
+      res.status(200).json({ message: "Recommendation sent successfully." });
+    } else {
+      throw new Error("WhatsApp service failed to send message");
+    }
   } catch (error) {
-    console.error("Recommendation notification error:", error);
     res.status(500).json({ error: "Failed to send recommendation." });
   }
 };

@@ -2,14 +2,23 @@ import { RequestHandler } from "express";
 import multer from "multer";
 import pdf, { Result } from "pdf-parse";
 import { llmService } from "../services/llmService";
+import { db } from "../services/supabaseService";
 
 const upload = multer({ storage: multer.memoryStorage() });
 export const policyUpload = upload.single("policyDocument");
 
-/**
- * A robust function to parse potentially malformed JSON from an LLM.
- * It looks for a JSON block within markdown backticks and has strong error handling.
- */
+// --- THIS IS THE NEW FUNCTION THAT WAS MISSING ---
+export const getAllPolicies: RequestHandler = async (req, res) => {
+  try {
+    const policies = await db.getAllPolicies();
+    res.status(200).json(policies);
+  } catch (error) {
+    console.error("Failed to get all policies:", error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+};
+// -------------------------------------------------
+
 const parseLlmJsonResponse = (llmResponse: string): any => {
   try {
     const jsonMatch = llmResponse.match(/\{[\s\S]*\}/);

@@ -13,7 +13,7 @@ export interface PaymentModalProps {
   policyId: string;
   customer: string;
   amount: number;
-  onPaymentSuccess: (updatedPolicy: any) => void; // Callback to update the main page state
+  onPaymentSuccess: () => void;
 }
 
 export function PaymentModal({ open, onOpenChange, policyId, customer, amount, onPaymentSuccess }: PaymentModalProps) {
@@ -31,32 +31,34 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount, o
     }
   }, [open, method, upiString]);
 
-  async function handlePay(selectedMethod: string) {
+  const success = (selectedMethod: string) => {
+    const txnId = `${selectedMethod.toUpperCase()}-${Date.now()}`;
+    downloadReceipt({
+      policyId,
+      customer,
+      amount,
+      method: selectedMethod.toUpperCase(),
+      txnId,
+      timestamp: new Date().toLocaleString(),
+    });
+    toast.success("Payment successful", { description: `Txn ${txnId}` });
+    onPaymentSuccess();
+    onOpenChange(false);
+  }
+
+  const handlePay = async (selectedMethod: string) => {
     setProcessing(true);
     try {
-      // Call your self-hosted backend to simulate the payment confirmation
       const response = await fetch('/api/payments/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ policyId }),
       });
-
-      if (!response.ok) {
-        throw new Error('Payment confirmation failed on the server.');
-      }
-      
       const result = await response.json();
-      if (result.status === 'success') {
-        const txnId = `MOCK-TXN-${Date.now()}`;
-        downloadReceipt({ policyId, customer, amount, method: selectedMethod.toUpperCase(), txnId, timestamp: new Date().toLocaleString() });
-        toast.success("Payment Confirmed!", { description: `Policy ${policyId} is now Active.` });
-        
-        // Use the callback to notify the main page to update its state
-        onPaymentSuccess(result.updatedPolicy);
-        onOpenChange(false); // Close the modal
-      } else {
-        throw new Error(result.message || 'Payment processing failed.');
+      if (!response.ok || result.status !== 'success') {
+        throw new Error(result.message || "Payment confirmation failed on server");
       }
+      success(selectedMethod);
     } catch (e) {
       toast.error("Payment Failed", { description: (e as Error).message });
     } finally {
@@ -68,7 +70,7 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount, o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Make Payment • ₹{amount.toFixed(2)}</DialogTitle>
+          <DialogTitle>Make Payment • ₹{amount.toLocaleString()}</DialogTitle>
         </DialogHeader>
         <Tabs value={method} onValueChange={setMethod}>
           <TabsList className="mb-4">
@@ -78,13 +80,13 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount, o
           </TabsList>
           <TabsContent value="upi" className="space-y-4">
             <div className="flex gap-6">
-              <div className="rounded-lg border bg-white p-4">
-                <canvas ref={canvasRef} />
+              <div className="rounded-lg border p-4">
+                <canvas ref={canvasRef} className="bg-white" />
               </div>
               <div className="flex-1 space-y-3">
                 <label className="text-sm font-medium">VPA (UPI ID)</label>
-                <Input value={vpa} onChange={(e) => setVpa(e.target.value)} placeholder="name@bank" />
-                <p className="text-sm text-muted-foreground">Scan the QR or pay to this VPA. Our system will confirm upon success.</p>
+                <Input value={vpa} onChange={(e) => setVpa(e.target.value)} placeholder="name@bank" voiceEnabled />
+                <p className="text-sm text-muted-foreground">Scan the QR or pay to this VPA. Auto-confirms on success.</p>
                 <div className="pt-2">
                   <Button onClick={() => handlePay("upi")} disabled={processing}>
                     {processing ? "Processing..." : "Confirm Payment"}
@@ -97,11 +99,11 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount, o
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="text-sm font-medium">Card Number</label>
-                <Input placeholder="1234 5678 9012 3456" maxLength={19} />
+                <Input placeholder="1234 5678 9012 3456" maxLength={19} voiceEnabled />
               </div>
               <div>
                 <label className="text-sm font-medium">Expiry</label>
-                <Input placeholder="MM/YY" />
+                <Input placeholder="MM/YY" voiceEnabled />
               </div>
               <div>
                 <label className="text-sm font-medium">CVV</label>
@@ -116,7 +118,7 @@ export function PaymentModal({ open, onOpenChange, policyId, customer, amount, o
           </TabsContent>
           <TabsContent value="netbanking" className="space-y-3">
             <label className="text-sm font-medium">Select Bank</label>
-            <Input placeholder="e.g., HDFC, ICICI, SBI" />
+            <Input placeholder="e.g., HDFC, ICICI, SBI" voiceEnabled />
             <div className="pt-2">
               <Button onClick={() => handlePay("netbanking")} disabled={processing}>
                 {processing ? "Processing..." : "Proceed to Bank"}
